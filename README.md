@@ -61,6 +61,8 @@ even if the repository itself is synchronized by OneDrive. A legacy
 - `blockedFiles` excludes drawings by exact filename.
 - `maxWidth` and `maxHeight` skip drawings that are too large.
 - Set either size to `0` to use the current terminal dimensions.
+- `rainbowChance` is a percentage from `0` to `100` controlling how often a
+  drawing receives rainbow-colored lines.
 - Set `enabled` to `false` to disable startup art on that device.
 
 Keep the repository outside OneDrive. Git is the synchronization mechanism for

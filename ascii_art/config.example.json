@@ -6,5 +6,6 @@
         "dolphin Normand Veilleux.txt"
     ],
     "maxWidth": 100,
-    "maxHeight": 40
+    "maxHeight": 40,
+    "rainbowChance": 25
 }

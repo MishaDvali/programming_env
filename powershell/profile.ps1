@@ -40,6 +40,7 @@ function Show-RandomAsciiArt {
     $blockedFiles = @()
     $maxWidth = 0
     $maxHeight = 0
+    $rainbowChance = 0
     $deviceConfigName = "config.$env:COMPUTERNAME.json"
     $deviceConfigPath = Join-Path $Directory $deviceConfigName
     $fallbackConfigPath = Join-Path $Directory 'config.json'
@@ -68,6 +69,9 @@ function Show-RandomAsciiArt {
             }
             if ($config.PSObject.Properties.Name -contains 'maxHeight') {
                 $maxHeight = [int] $config.maxHeight
+            }
+            if ($config.PSObject.Properties.Name -contains 'rainbowChance') {
+                $rainbowChance = [Math]::Min(100, [Math]::Max(0, [int] $config.rainbowChance))
             }
         }
         catch {
@@ -120,8 +124,24 @@ function Show-RandomAsciiArt {
 
     if ($candidates.Count -gt 0) {
         $drawing = $candidates | Get-Random
+        $useRainbow = (
+            $rainbowChance -gt 0 -and
+            (Get-Random -Minimum 1 -Maximum 101) -le $rainbowChance
+        )
+
         Write-Host
-        Write-Host ($drawing.Lines -join [Environment]::NewLine)
+        if ($useRainbow) {
+            $rainbowColors = @('Red', 'Yellow', 'Green', 'Cyan', 'Blue', 'Magenta')
+            $colorOffset = Get-Random -Minimum 0 -Maximum $rainbowColors.Count
+
+            for ($lineIndex = 0; $lineIndex -lt $drawing.Lines.Count; $lineIndex++) {
+                $colorIndex = ($lineIndex + $colorOffset) % $rainbowColors.Count
+                Write-Host ($drawing.Lines[$lineIndex]) -ForegroundColor ($rainbowColors[$colorIndex])
+            }
+        }
+        else {
+            Write-Host ($drawing.Lines -join [Environment]::NewLine)
+        }
         Write-Host
     }
 }
