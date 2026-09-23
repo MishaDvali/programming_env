@@ -1,0 +1,10 @@
+{
+    "enabled": true,
+    "allowedFiles": [],
+    "blockedFiles": [
+        "deer VK.txt",
+        "dolphin Normand Veilleux.txt"
+    ],
+    "maxWidth": 100,
+    "maxHeight": 40
+}
