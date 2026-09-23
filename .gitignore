@@ -1,1 +1,3 @@
 /ascii_art/config.json
+/ascii_art/config.*.json
+!/ascii_art/config.example.json

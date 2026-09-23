@@ -45,9 +45,17 @@ updates apply the next time a shell opens.
 
 ## Startup ASCII art
 
-Copy `ascii_art/config.example.json` to `ascii_art/config.json` on each device.
-The local `config.json` is ignored by Git, so every computer can have its own
-terminal-size limits and file selection.
+Copy `ascii_art/config.example.json` to a file named for the current computer:
+
+```powershell
+$deviceConfig = "config.$env:COMPUTERNAME.json"
+Copy-Item .\ascii_art\config.example.json ".\ascii_art\$deviceConfig"
+```
+
+Machine-specific `config.*.json` files are ignored by Git. Each computer reads
+only the file matching its own computer name, so this remains device-specific
+even if the repository itself is synchronized by OneDrive. A legacy
+`ascii_art/config.json` is used only when no machine-specific file exists.
 
 - An empty `allowedFiles` list allows every `.txt` drawing.
 - `blockedFiles` excludes drawings by exact filename.

@@ -40,7 +40,15 @@ function Show-RandomAsciiArt {
     $blockedFiles = @()
     $maxWidth = 0
     $maxHeight = 0
-    $configPath = Join-Path $Directory 'config.json'
+    $deviceConfigName = "config.$env:COMPUTERNAME.json"
+    $deviceConfigPath = Join-Path $Directory $deviceConfigName
+    $fallbackConfigPath = Join-Path $Directory 'config.json'
+    $configPath = if (Test-Path -LiteralPath $deviceConfigPath -PathType Leaf) {
+        $deviceConfigPath
+    }
+    else {
+        $fallbackConfigPath
+    }
 
     if (Test-Path -LiteralPath $configPath -PathType Leaf) {
         try {
