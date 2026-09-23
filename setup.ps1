@@ -37,10 +37,33 @@ function Install-BundledFont {
     $destination = Join-Path $fontDirectory $file.Name
 
     New-Item -ItemType Directory -Path $fontDirectory -Force | Out-Null
-    New-Item -Path $registryPath -Force | Out-Null
+    if (-not (Test-Path -LiteralPath $registryPath)) {
+        New-Item -Path $registryPath -Force | Out-Null
+    }
     Copy-Item -LiteralPath $file.FullName -Destination $destination -Force
     New-ItemProperty -Path $registryPath -Name "$($file.BaseName) (TrueType)" `
         -Value $destination -PropertyType String -Force | Out-Null
+
+    if (-not ('ProgrammingEnv.FontInstaller' -as [type])) {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace ProgrammingEnv {
+    public static class FontInstaller {
+        [DllImport("gdi32.dll", CharSet = CharSet.Unicode)]
+        public static extern int AddFontResourceEx(string fileName, uint flags, IntPtr reserved);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern IntPtr SendMessageTimeout(
+            IntPtr window, uint message, UIntPtr wParam, IntPtr lParam,
+            uint flags, uint timeout, out UIntPtr result);
+    }
+}
+'@
+    }
+
+    [void][ProgrammingEnv.FontInstaller]::AddFontResourceEx($destination, 0, [IntPtr]::Zero)
 }
 
 function Set-ProfileLoader {
@@ -142,6 +165,14 @@ if (-not $SkipFonts) {
     Get-ChildItem -LiteralPath (Join-Path $repositoryRoot 'Fonts\FiraCode') `
         -Filter 'FiraCodeNerdFontMono-*.ttf' -File |
         ForEach-Object { Install-BundledFont -Path $_.FullName }
+
+    $broadcast = [IntPtr]0xffff
+    $fontChange = 0x001d
+    $result = [UIntPtr]::Zero
+    [void][ProgrammingEnv.FontInstaller]::SendMessageTimeout(
+        $broadcast, $fontChange, [UIntPtr]::Zero, [IntPtr]::Zero,
+        2, 1000, [ref]$result
+    )
     Write-Host 'Installed FiraCode Nerd Font Mono for the current user.'
 }
 
