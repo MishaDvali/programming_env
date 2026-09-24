@@ -28,7 +28,9 @@ $asciiArtDirectory = Join-Path $repositoryRoot 'ascii_art'
 function Show-RandomAsciiArt {
     param(
         [Parameter(Mandatory)]
-        [string] $Directory
+        [string] $Directory,
+
+        [switch] $ShowChances
     )
 
     if (-not (Test-Path -LiteralPath $Directory -PathType Container)) {
@@ -38,9 +40,8 @@ function Show-RandomAsciiArt {
     $enabled = $true
     $allowedFiles = @()
     $blockedFiles = @()
-    $maxWidth = 0
-    $maxHeight = 0
     $rainbowChance = 0
+    $sizeBiasStrength = 100
     $deviceConfigName = "config.$env:COMPUTERNAME.json"
     $deviceConfigPath = Join-Path $Directory $deviceConfigName
     $fallbackConfigPath = Join-Path $Directory 'config.json'
@@ -64,14 +65,11 @@ function Show-RandomAsciiArt {
             if ($config.PSObject.Properties.Name -contains 'blockedFiles') {
                 $blockedFiles = @($config.blockedFiles | Where-Object { $_ })
             }
-            if ($config.PSObject.Properties.Name -contains 'maxWidth') {
-                $maxWidth = [int] $config.maxWidth
-            }
-            if ($config.PSObject.Properties.Name -contains 'maxHeight') {
-                $maxHeight = [int] $config.maxHeight
-            }
             if ($config.PSObject.Properties.Name -contains 'rainbowChance') {
                 $rainbowChance = [Math]::Min(100, [Math]::Max(0, [int] $config.rainbowChance))
+            }
+            if ($config.PSObject.Properties.Name -contains 'sizeBiasStrength') {
+                $sizeBiasStrength = [Math]::Min(100, [Math]::Max(0, [int] $config.sizeBiasStrength))
             }
         }
         catch {
@@ -84,11 +82,14 @@ function Show-RandomAsciiArt {
         return
     }
 
-    if ($maxWidth -le 0) {
-        try { $maxWidth = $Host.UI.RawUI.WindowSize.Width } catch { $maxWidth = 0 }
+    try {
+        $windowSize = $Host.UI.RawUI.WindowSize
+        $availableWidth = [Math]::Max(1, $windowSize.Width - 2)
+        $availableHeight = [Math]::Max(1, $windowSize.Height - 5)
     }
-    if ($maxHeight -le 0) {
-        try { $maxHeight = [Math]::Max(1, $Host.UI.RawUI.WindowSize.Height - 5) } catch { $maxHeight = 0 }
+    catch {
+        $availableWidth = 78
+        $availableHeight = 19
     }
 
     $candidates = @(
@@ -108,22 +109,68 @@ function Show-RandomAsciiArt {
                 0
             }
 
-            if ($maxWidth -gt 0 -and $width -gt $maxWidth) {
+            if ($width -gt $availableWidth) {
                 return
             }
-            if ($maxHeight -gt 0 -and $lines.Count -gt $maxHeight) {
+            if ($lines.Count -gt $availableHeight) {
                 return
             }
 
             [pscustomobject]@{
                 Name = $_.Name
                 Lines = $lines
+                Width = $width
+                Height = $lines.Count
+                Area = $width * $lines.Count
             }
         }
     )
 
     if ($candidates.Count -gt 0) {
-        $drawing = $candidates | Get-Random
+        $widthRoominess = [Math]::Min(1.0, [Math]::Max(0.0, ($availableWidth - 80) / 80.0))
+        $heightRoominess = [Math]::Min(1.0, [Math]::Max(0.0, ($availableHeight - 24) / 48.0))
+        $screenRoominess = [Math]::Max($widthRoominess, $heightRoominess)
+        $sizeBias = [Math]::Pow($screenRoominess, 2)
+        $effectiveBias = $sizeBias * ($sizeBiasStrength / 100.0)
+        $largestArea = ($candidates | Measure-Object -Property Area -Maximum).Maximum
+
+        foreach ($candidate in $candidates) {
+            $relativeArea = if ($largestArea -gt 0) {
+                $candidate.Area / $largestArea
+            }
+            else {
+                0
+            }
+            $weight = 1 + [Math]::Floor(
+                12 * $effectiveBias * [Math]::Pow($relativeArea, 2)
+            )
+            $candidate | Add-Member -NotePropertyName Weight -NotePropertyValue ([int] $weight) -Force
+        }
+
+        $totalWeight = ($candidates | Measure-Object -Property Weight -Sum).Sum
+
+        if ($ShowChances) {
+            $effectiveBiasPercent = [Math]::Round($effectiveBias * 100, 1)
+            Write-Host "Usable terminal: ${availableWidth}x${availableHeight} | Configured bias: ${sizeBiasStrength}% | Effective bias: ${effectiveBiasPercent}%"
+
+            return $candidates |
+                Sort-Object Area -Descending |
+                Select-Object Name, Width, Height, Weight, @{
+                    Name = 'ChancePercent'
+                    Expression = { [Math]::Round(100 * $_.Weight / $totalWeight, 1) }
+                }
+        }
+
+        $ticket = Get-Random -Minimum 1 -Maximum ([int] $totalWeight + 1)
+        $drawing = $candidates[-1]
+        foreach ($candidate in $candidates) {
+            $ticket -= $candidate.Weight
+            if ($ticket -le 0) {
+                $drawing = $candidate
+                break
+            }
+        }
+
         $useRainbow = (
             $rainbowChance -gt 0 -and
             (Get-Random -Minimum 1 -Maximum 101) -le $rainbowChance
@@ -144,6 +191,10 @@ function Show-RandomAsciiArt {
         }
         Write-Host
     }
+}
+
+function Get-AsciiArtChances {
+    Show-RandomAsciiArt -Directory $asciiArtDirectory -ShowChances
 }
 
 if ($isInteractiveConsole -and -not $global:ProgrammingEnvAsciiArtShown) {

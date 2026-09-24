@@ -59,8 +59,14 @@ even if the repository itself is synchronized by OneDrive. A legacy
 
 - An empty `allowedFiles` list allows every `.txt` drawing.
 - `blockedFiles` excludes drawings by exact filename.
-- `maxWidth` and `maxHeight` skip drawings that are too large.
-- Set either size to `0` to use the current terminal dimensions.
+- The current terminal width and height are detected automatically; drawings
+  that do not fit are skipped.
+- Larger terminals progressively favor larger eligible drawings while keeping
+  some randomness.
+- `sizeBiasStrength` controls that preference from `0` (equal odds) to `100`
+  (full adaptive preference).
+- Run `Get-AsciiArtChances` to see the exact eligible files, weights, and
+  selection percentages for the current terminal size.
 - `rainbowChance` is a percentage from `0` to `100` controlling how often a
   drawing receives rainbow-colored lines.
 - Set `enabled` to `false` to disable startup art on that device.

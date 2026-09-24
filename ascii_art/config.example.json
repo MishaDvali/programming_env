@@ -1,11 +1,7 @@
 {
     "enabled": true,
     "allowedFiles": [],
-    "blockedFiles": [
-        "deer VK.txt",
-        "dolphin Normand Veilleux.txt"
-    ],
-    "maxWidth": 100,
-    "maxHeight": 40,
-    "rainbowChance": 25
+    "blockedFiles": [],
+    "rainbowChance": 25,
+    "sizeBiasStrength": 100
 }
